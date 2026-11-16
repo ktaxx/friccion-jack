@@ -1,0 +1,323 @@
+/** Logica principal de FRICCION.
+    - Flechas izq/der = impulso, arriba/abajo = cambiar de carril, Q = salir.
+    - Meta: detenerse dentro de la zona de frenado y permanecer ahi un tiempo.
+    - Limite de tiempo por intento: si se agota, se pierde una vida.
+    - Cada cierto tiempo las superficies rotan entre carriles (con aviso). */
+class Game {
+    field Array belts;
+    field Block block;
+    field int score, lives;
+    // textos reservados una sola vez (evita gastar memoria en cada ciclo)
+    field String sPts, sVid, sPad, sSup, sZona, sOver, sTime;
+    field String sIce, sSand, sRub, lIce, lSand, lRub;
+
+    constructor Game new() {
+        let belts = Array.new(4);
+        // Belt.new(y, velocidad de la cinta, superficie 0=hielo 1=arena 2=caucho)
+        let belts[0] = Belt.new(40, 3, 0);
+        let belts[1] = Belt.new(88, 1, 1);
+        let belts[2] = Belt.new(136, 1, 2);
+        let belts[3] = Belt.new(184, 2, 1);
+        let block = Block.new();
+        let score = 0;
+        let lives = 3;
+        let sPts = "PUNTOS: ";
+        let sVid = "   VIDAS: ";
+        let sPad = "   ";
+        let sSup = "SUPERF: ";
+        let sZona = "ZONA";
+        let sTime = "TIEMPO";
+        let sOver = "GAME OVER";
+        let sIce = "HIELO ";
+        let sSand = "ARENA ";
+        let sRub = "CAUCHO";
+        let lIce = "HIE";
+        let lSand = "ARE";
+        let lRub = "CAU";
+        return this;
+    }
+
+    /** Dibuja separadores, barras de la zona de frenado y los recuadros de progreso y tiempo. */
+    method void drawScene() {
+        var int i;
+        var Belt t;
+        do Screen.setColor(true);
+        let i = 0;
+        while (i < 4) {
+            let t = belts[i];
+            do Screen.drawRectangle(0, t.getY() + 44, 495, t.getY() + 45);
+            let i = i + 1;
+        }
+        // zona de frenado: dos barras verticales
+        do Screen.drawRectangle(398, 40, 399, 231);
+        do Screen.drawRectangle(474, 40, 475, 231);
+        // recuadro de progreso (arriba a la derecha)
+        do Output.moveCursor(0, 51);
+        do Output.printString(sZona);
+        do Screen.drawRectangle(440, 1, 502, 9);
+        do showHold(0);
+        // recuadro del tiempo restante (debajo del de progreso)
+        do Output.moveCursor(1, 45);
+        do Output.printString(sTime);
+        do Screen.drawRectangle(440, 13, 502, 21);
+        do showTime(60);
+        return;
+    }
+
+    /** Vuelve a dibujar los pedazos de barra que borro el bloque en su carril. */
+    method void redrawBars(int y) {
+        do Screen.setColor(true);
+        do Screen.drawRectangle(398, y + 16, 399, y + 31);
+        do Screen.drawRectangle(474, y + 16, 475, y + 31);
+        return;
+    }
+
+    /** Barra de progreso: cuanto tiempo lleva el bloque dentro de la zona. */
+    method void showHold(int n) {
+        do Screen.setColor(false);
+        do Screen.drawRectangle(441, 2, 501, 8);
+        if (n > 0) {
+            do Screen.setColor(true);
+            do Screen.drawRectangle(441, 2, 441 + n, 8);
+        }
+        return;
+    }
+
+    /** Barra de tiempo restante: w va de 60 (lleno) a 0 (se acabo). */
+    method void showTime(int w) {
+        do Screen.setColor(false);
+        do Screen.drawRectangle(441, 14, 501, 20);
+        if (w > 0) {
+            do Screen.setColor(true);
+            do Screen.drawRectangle(441, 14, 441 + w, 20);
+        }
+        return;
+    }
+
+    method void showHud() {
+        do Output.moveCursor(0, 0);
+        do Output.printString(sPts);
+        do Output.printInt(score);
+        do Output.printString(sVid);
+        do Output.printInt(lives);
+        do Output.printString(sPad);
+        return;
+    }
+
+    method void printName(int type) {
+        if (type = 0) {
+            do Output.printString(sIce);
+        } else {
+            if (type = 1) {
+                do Output.printString(sSand);
+            } else {
+                do Output.printString(sRub);
+            }
+        }
+        return;
+    }
+
+    method void printLabel(int type) {
+        if (type = 0) {
+            do Output.printString(lIce);
+        } else {
+            if (type = 1) {
+                do Output.printString(lSand);
+            } else {
+                do Output.printString(lRub);
+            }
+        }
+        return;
+    }
+
+    /** Muestra en el HUD la superficie del carril donde esta el bloque. */
+    method void showSurface() {
+        var Belt b;
+        let b = belts[block.getLane()];
+        do Output.moveCursor(0, 28);
+        do Output.printString(sSup);
+        do printName(b.getType());
+        return;
+    }
+
+    /** Etiqueta (HIE / ARE / CAU) al final de cada carril. */
+    method void drawLabels() {
+        var int i;
+        var Belt t;
+        let i = 0;
+        while (i < 4) {
+            let t = belts[i];
+            do Output.moveCursor((t.getY() + 16) / 11, 61);
+            do printLabel(t.getType());
+            let i = i + 1;
+        }
+        return;
+    }
+
+    /** Rota las superficies: cada carril toma la del carril de abajo. */
+    method void rotate() {
+        var int i, first;
+        var Belt t, u;
+        let t = belts[0];
+        let first = t.getType();
+        let i = 0;
+        while (i < 3) {
+            let t = belts[i];
+            let u = belts[i + 1];
+            do t.setSurface(u.getType());
+            let i = i + 1;
+        }
+        let t = belts[3];
+        do t.setSurface(first);
+        return;
+    }
+
+    method void run() {
+        var boolean exit, dead, hid, nh;
+        var int key, prevKey, i, oldLane, oldY, cyc, q, x, hold, shown, tl, shownT;
+        var Belt b, t;
+
+        let exit = false;
+        let hid = false;
+        let prevKey = 0;
+        let cyc = 0;
+        let hold = 0;
+        let shown = 0;
+        let tl = 600;    // tiempo por intento (en ciclos)
+        let shownT = 60;
+        do drawScene();
+        do showHud();
+        do showSurface();
+        do drawLabels();
+        let b = belts[block.getLane()];
+        do block.draw(b.getY() + 16);
+
+        while (~exit) {
+            let key = Keyboard.keyPressed();
+            if ((key = 81) | (key = 113)) { let exit = true; }
+
+            // borra el bloque en su posicion anterior
+            let oldLane = block.getLane();
+            let b = belts[oldLane];
+            let oldY = b.getY();
+            do block.erase();
+            do redrawBars(oldY);
+
+            // teclado
+            if (key = 130) { do block.push(-1); }
+            if (key = 132) { do block.push(1); }
+            if ((key = 131) & (~(prevKey = 131))) { do block.changeLane(-1); }
+            if ((key = 133) & (~(prevKey = 133))) { do block.changeLane(1); }
+            let prevKey = key;
+            if (~(oldLane = block.getLane())) { do showSurface(); }
+
+            // fisica: friccion de la superficie y arrastre de la cinta
+            let b = belts[block.getLane()];
+            do block.update(b);
+
+            // fondo movil
+            let i = 0;
+            while (i < 4) {
+                let t = belts[i];
+                do t.move();
+                let i = i + 1;
+            }
+
+            // temporizador de rotacion: aviso parpadeando y luego cambio
+            let cyc = cyc + 1;
+            if (cyc > 179) {
+                let i = 0;
+                while (i < 4) {
+                    let t = belts[i];
+                    do t.setHidden(false);
+                    let i = i + 1;
+                }
+                do rotate();
+                do drawLabels();
+                do showSurface();
+                let hid = false;
+                let cyc = 0;
+            } else {
+                if (cyc > 139) {
+                    let q = cyc / 6;
+                    let nh = ((q - ((q / 2) * 2)) = 0);
+                    if (~(nh = hid)) {
+                        let hid = nh;
+                        let i = 0;
+                        while (i < 4) {
+                            let t = belts[i];
+                            do t.setHidden(hid);
+                            let i = i + 1;
+                        }
+                    }
+                }
+            }
+
+            // reglas: salir por la izquierda, pasarse de la zona o quedarse
+            // sin tiempo = perder vida
+            let tl = tl - 1;
+            let x = block.getX();
+            let dead = (block.getX8() < 0) | (x > 470) | (tl < 1);
+            if (dead) {
+                let lives = lives - 1;
+                let hold = 0;
+                let tl = 600;
+                do block.reset();
+                do showHud();
+                do showSurface();
+                if (lives = 0) {
+                    do Output.moveCursor(11, 27);
+                    do Output.printString(sOver);
+                    do Sys.wait(2000);
+                    let exit = true;
+                }
+            } else {
+                if ((x > 399) & (x < 459)) {
+                    // dentro de la zona: acumula tiempo
+                    let hold = hold + 1;
+                    if (hold > 59) {
+                        let score = score + 1;
+                        let hold = 0;
+                        let tl = 600;
+                        do block.reset();
+                        do showHud();
+                        do showSurface();
+                    }
+                } else {
+                    let hold = 0;
+                }
+            }
+            if (~(hold = shown)) {
+                do showHold(hold);
+                let shown = hold;
+            }
+            let q = tl / 10;
+            if (~(q = shownT)) {
+                do showTime(q);
+                let shownT = q;
+            }
+
+            if (~exit) {
+                let b = belts[block.getLane()];
+                do block.draw(b.getY() + 16);
+            }
+            do Sys.wait(30);
+        }
+        return;
+    }
+
+    method void dispose() {
+        var int i;
+        var Belt t;
+        let i = 0;
+        while (i < 4) {
+            let t = belts[i];
+            do t.dispose();
+            let i = i + 1;
+        }
+        do belts.dispose();
+        do block.dispose();
+        do Memory.deAlloc(this);
+        return;
+    }
+}

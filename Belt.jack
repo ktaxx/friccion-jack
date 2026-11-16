@@ -1,0 +1,101 @@
+/** Una cinta transportadora (un carril). La cinta tiene una velocidad fija
+    y una superficie (hielo, arena o caucho) que puede cambiar con el tiempo. */
+class Belt {
+    field int y;        // borde superior del carril en pantalla
+    field int step;     // pixeles que avanzan las marcas por ciclo
+    field int drift;    // arrastre sobre el bloque (1/8 de pixel por ciclo)
+    field int fric;     // divisor de friccion: menor = mas friccion
+    field int tickW;    // ancho de las marcas
+    field int tickT;    // fila superior de las marcas (relativa a y)
+    field int tickB;    // fila inferior de las marcas (relativa a y)
+    field int scroll;   // desplazamiento actual del fondo (0..63)
+    field int type;     // 0 = hielo, 1 = arena, 2 = caucho
+    field boolean hidden; // true mientras parpadea el aviso de cambio
+
+    constructor Belt new(int Ay, int Astep, int Atype) {
+        let y = Ay;
+        let step = Astep;
+        let drift = Astep * 4;
+        let scroll = 0;
+        let hidden = false;
+        do applyType(Atype);
+        do drawTicks(true);
+        return this;
+    }
+
+    /** Define friccion y textura segun la superficie (sin dibujar). */
+    method void applyType(int t) {
+        let type = t;
+        if (t = 0) {
+            // hielo: casi sin friccion, rayitas finas
+            let fric = 24;
+            let tickW = 8;
+            let tickT = 5;
+            let tickB = 5;
+        } else {
+            if (t = 1) {
+                // arena: friccion media, puntos
+                let fric = 8;
+                let tickW = 3;
+                let tickT = 3;
+                let tickB = 6;
+            } else {
+                // caucho: mucha friccion, barras gruesas
+                let fric = 4;
+                let tickW = 16;
+                let tickT = 2;
+                let tickB = 8;
+            }
+        }
+        return;
+    }
+
+    method int getY() { return y; }
+    method int getDrift() { return drift; }
+    method int getFric() { return fric; }
+    method int getType() { return type; }
+
+    /** Cambia la superficie de este carril y redibuja su textura. */
+    method void setSurface(int t) {
+        if (~hidden) { do drawTicks(false); }
+        do applyType(t);
+        if (~hidden) { do drawTicks(true); }
+        return;
+    }
+
+    /** Oculta o muestra las marcas (parpadeo de aviso). */
+    method void setHidden(boolean h) {
+        if (h & (~hidden)) { do drawTicks(false); }
+        let hidden = h;
+        return;
+    }
+
+    /** Dibuja o borra las marcas. Solo a la izquierda de la zona de frenado. */
+    method void drawTicks(boolean color) {
+        var int k, x;
+        let k = 0;
+        do Screen.setColor(color);
+        while (k < 8) {
+            let x = ((k * 64) + 64) - scroll;
+            if ((x > 0) & ((x + tickW) < 395)) {
+                do Screen.drawRectangle(x, y + tickT, x + tickW, y + tickB);
+            }
+            let k = k + 1;
+        }
+        return;
+    }
+
+    /** Avanza el fondo movil de este carril. */
+    method void move() {
+        if (~hidden) { do drawTicks(false); }
+        let scroll = scroll + step;
+        if (scroll > 63) { let scroll = scroll - 64; }
+        if (~hidden) { do drawTicks(true); }
+        return;
+    }
+
+    method void dispose() {
+        do Memory.deAlloc(this);
+        return;
+    }
+}

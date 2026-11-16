@@ -1,0 +1,65 @@
+/** El bloque del jugador. Posicion en 1/8 de pixel para tener fisica
+    con enteros. Velocidad vx tambien en 1/8 de pixel por ciclo. */
+class Block {
+    field int x8, vx, lane;
+    field int drawX, drawY;  // donde esta dibujado ahora (para borrarlo)
+
+    constructor Block new() {
+        let drawX = 120;
+        let drawY = 104;
+        do reset();
+        return this;
+    }
+
+    method void reset() {
+        let x8 = 960;   // empieza en x = 120
+        let vx = 0;
+        let lane = 1;
+        return;
+    }
+
+    method int getX8() { return x8; }
+    method int getX() { return x8 / 8; }
+    method int getLane() { return lane; }
+
+    /** dir = -1 (izquierda) o 1 (derecha). Suma un impulso a la velocidad. */
+    method void push(int dir) {
+        let vx = vx + (dir * 16);
+        if (vx > 80) { let vx = 80; }
+        if (vx < -80) { let vx = -80; }
+        return;
+    }
+
+    method void changeLane(int d) {
+        let lane = lane + d;
+        if (lane < 0) { let lane = 0; }
+        if (lane > 3) { let lane = 3; }
+        return;
+    }
+
+    /** Fisica de un ciclo: friccion de la superficie y arrastre de la cinta. */
+    method void update(Belt b) {
+        let vx = vx - (vx / b.getFric());
+        let x8 = (x8 + vx) - b.getDrift();
+        return;
+    }
+
+    method void erase() {
+        do Screen.setColor(false);
+        do Screen.drawRectangle(drawX, drawY, drawX + 15, drawY + 15);
+        return;
+    }
+
+    method void draw(int y) {
+        let drawX = x8 / 8;
+        let drawY = y;
+        do Screen.setColor(true);
+        do Screen.drawRectangle(drawX, drawY, drawX + 15, drawY + 15);
+        return;
+    }
+
+    method void dispose() {
+        do Memory.deAlloc(this);
+        return;
+    }
+}

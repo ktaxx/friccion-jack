@@ -1,0 +1,169 @@
+function Block.new 0
+push constant 5
+call Memory.alloc 1
+pop pointer 0
+push constant 40
+pop this 3
+push constant 104
+pop this 4
+push pointer 0
+call Block.reset 1
+pop temp 0
+push pointer 0
+return
+function Block.reset 0
+push argument 0
+pop pointer 0
+push constant 320
+pop this 0
+push constant 0
+pop this 1
+push constant 1
+pop this 2
+push constant 0
+return
+function Block.getX8 0
+push argument 0
+pop pointer 0
+push this 0
+return
+function Block.getX 0
+push argument 0
+pop pointer 0
+push this 0
+push constant 8
+call Math.divide 2
+return
+function Block.getLane 0
+push argument 0
+pop pointer 0
+push this 2
+return
+function Block.push 0
+push argument 0
+pop pointer 0
+push this 1
+push argument 1
+push constant 4
+call Math.multiply 2
+add
+pop this 1
+push this 1
+push constant 80
+gt
+if-goto IF_TRUE0
+goto IF_FALSE0
+label IF_TRUE0
+push constant 80
+pop this 1
+label IF_FALSE0
+push this 1
+push constant 80
+neg
+lt
+if-goto IF_TRUE1
+goto IF_FALSE1
+label IF_TRUE1
+push constant 80
+neg
+pop this 1
+label IF_FALSE1
+push constant 0
+return
+function Block.changeLane 0
+push argument 0
+pop pointer 0
+push this 2
+push argument 1
+add
+pop this 2
+push this 2
+push constant 0
+lt
+if-goto IF_TRUE0
+goto IF_FALSE0
+label IF_TRUE0
+push constant 0
+pop this 2
+label IF_FALSE0
+push this 2
+push constant 3
+gt
+if-goto IF_TRUE1
+goto IF_FALSE1
+label IF_TRUE1
+push constant 3
+pop this 2
+label IF_FALSE1
+push constant 0
+return
+function Block.update 0
+push argument 0
+pop pointer 0
+push this 1
+push this 1
+push argument 1
+call Belt.getFric 1
+call Math.divide 2
+sub
+pop this 1
+push this 0
+push this 1
+add
+push argument 1
+call Belt.getDrift 1
+sub
+pop this 0
+push constant 0
+return
+function Block.erase 0
+push argument 0
+pop pointer 0
+push constant 0
+call Screen.setColor 1
+pop temp 0
+push this 3
+push this 4
+push this 3
+push constant 15
+add
+push this 4
+push constant 15
+add
+call Screen.drawRectangle 4
+pop temp 0
+push constant 0
+return
+function Block.draw 0
+push argument 0
+pop pointer 0
+push this 0
+push constant 8
+call Math.divide 2
+pop this 3
+push argument 1
+pop this 4
+push constant 0
+not
+call Screen.setColor 1
+pop temp 0
+push this 3
+push this 4
+push this 3
+push constant 15
+add
+push this 4
+push constant 15
+add
+call Screen.drawRectangle 4
+pop temp 0
+push constant 0
+return
+function Block.dispose 0
+push argument 0
+pop pointer 0
+push pointer 0
+call Memory.deAlloc 1
+pop temp 0
+push constant 0
+return
