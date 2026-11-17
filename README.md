@@ -55,5 +55,4 @@ El teclado se lee con `Keyboard.keyPressed()`, sin detener el ciclo del juego.
 4. Usa las flechas para jugar y Q para salir.
 
 ## Video
-
-[Enlace a YouTube]
+https://youtu.be/QkuZfk4olBk
